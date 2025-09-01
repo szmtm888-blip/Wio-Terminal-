@@ -1,5 +1,5 @@
-![c232e262c0b7010fd1c4b5c2e59aa417](https://github.com/user-attachments/assets/cd8172f9-d725-4d5d-a92a-b2078176af2b)
-# Wio-Terminal and Grove-温度传感器 搭建简易环境测温系统
+![封面图](https://github.com/user-attachments/assets/4d3d5d36-88db-4448-9d1c-2fccfdcae42e)
+# Wio-Terminal and Grove-温度传感器 搭建便携式简易环境测温器
 本项目使用 Seeed Wio Terminal 与 Grove-温度传感器 搭建一个简单的环境温度采集与显示系统。通过本教程，你将学会：硬件连接与环境配置，读取传感器数据并在串口监视器中打印，在 Wio Terminal 屏幕上实时显示温度，该项目适合 Arduino 初学者和创客爱好者，帮助你快速上手传感器数据采集与屏幕显示。
 
 
@@ -10,7 +10,7 @@
 | Grove - 温度传感器 V1.2 | 1  | 使用热敏电阻检测环境温度        |
 | Grove 连接线          | 1  | 连接传感器与 Wio Terminal |
 | USB-C 数据线          | 1  | 用于供电和上传程序           |
-
+| 便携式充电宝          | 1  | 用于供电、便携测温器           |
 
 ⚙️ 环境准备
 
@@ -36,7 +36,7 @@
 
 2.使用 USB-C 数据线连接电脑
 
-![7156de350d974747833048aec20bbe67](https://github.com/user-attachments/assets/23e1c3a8-e7b6-4da0-9081-201399752322)
+![接口图](https://github.com/user-attachments/assets/f6203738-330f-4afb-af0a-f7dda882160a)
 
 
 💻 示例代码
@@ -45,21 +45,25 @@
 #include "TFT_eSPI.h"
 #include "SPI.h"
 
-const int B = 4275000;            // B value of the thermistor
-const int R0 = 100000;            // R0 = 100k
-const int pinTempSensor = A0;     // Grove - Temperature Sensor connect to A0
+const int B = 4275;             // Grove Temp Sensor V1.2 官方 B 值
+const int R0 = 100000;          // R0 = 100k
+const int pinTempSensor = A0;   // Grove - Temperature Sensor 接 A0
 
-TFT_eSPI tft = TFT_eSPI();  // 创建 TFT 对象
+TFT_eSPI tft = TFT_eSPI();      // TFT 对象
+
+// 自动检测 ADC 分辨率
+int adcMax = 1023; // 默认 10 位 ADC
+bool checked = false;
 
 void setup() {
     Serial.begin(9600);
 
     // 初始化屏幕
     tft.begin();
-    tft.setRotation(3);   // 设置屏幕方向
+    tft.setRotation(3);
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft.setTextSize(3);
+    tft.setTextSize(2);
 
     tft.setCursor(20, 20);
     tft.println("Grove Temp Sensor");
@@ -68,18 +72,26 @@ void setup() {
 void loop() {
     int a = analogRead(pinTempSensor);
 
-    float R = 1023.0 / a - 1.0;
+    // 自动检测 ADC 分辨率
+    if (!checked) {
+        if (a > 1023) adcMax = 4095; // 说明是 12 位 ADC
+        checked = true;
+        Serial.print("Detected ADC Max = ");
+        Serial.println(adcMax);
+    }
+
+    float R = (float)adcMax / a - 1.0;
     R = R0 * R;
 
     float temperature = 1.0 / (log(R / R0) / B + 1 / 298.15) - 273.15; // 摄氏度
 
     // 串口输出
     Serial.print("temperature = ");
-    Serial.print(temperature);
+    Serial.print(temperature, 1);
     Serial.println(" C");
 
-    // 屏幕输出
-    tft.fillRect(20, 80, 200, 40, TFT_BLACK); // 清除旧数据
+    // 屏幕显示
+    tft.fillRect(20, 80, 200, 40, TFT_BLACK); // 清除旧数据显示区域
     tft.setCursor(20, 80);
     tft.print("Temp: ");
     tft.print(temperature, 1); // 保留 1 位小数
